@@ -15,18 +15,17 @@
  */
 
 import * as dom from '../../src/dom';
-import * as sinon from 'sinon';
 import {loadPromise} from '../../src/event-helper';
 import {toArray} from '../../src/types';
 
 
 
-describe('DOM', () => {
+describes.sandboxed('DOM', {}, env => {
 
   let sandbox;
 
   beforeEach(() => {
-    sandbox = sinon.sandbox.create();
+    sandbox = env.sandbox;
   });
 
   afterEach(() => {
@@ -94,7 +93,7 @@ describe('DOM', () => {
     expect(cbSpy).to.be.calledThrice;
 
     expect(dom.closest(grandchild, cb, child)).to.be.null;
-    expect(cbSpy.callCount).to.equal(4);
+    expect(cbSpy).to.have.callCount(4);
 
   });
 
@@ -399,6 +398,27 @@ describe('DOM', () => {
         .to.be.equal(0);
   });
 
+  it('iterateCursor should loop through every element in a NodeList', () => {
+    const fragment = document.createDocumentFragment();
+    [0, 1, 2].forEach(() => fragment.appendChild(document.createElement('i')));
+
+    const iSpy = sandbox.spy();
+    dom.iterateCursor(fragment.querySelectorAll('i'), iSpy);
+    expect(iSpy).to.be.calledThrice;
+
+    const bSpy = sandbox.spy();
+    dom.iterateCursor(fragment.querySelectorAll('b'), bSpy);
+    expect(bSpy).to.be.notCalled;
+  });
+
+  it('iterateCursor should allow null elements in a list', () => {
+    const list = ['wow', null, 'cool'];
+
+    const spy = sandbox.spy();
+    dom.iterateCursor(list, spy);
+    expect(spy).to.be.calledThrice;
+  });
+
   function testScopedQuerySelector() {
     const grandparent = document.createElement('div');
 
@@ -463,13 +483,13 @@ describe('DOM', () => {
       parent.appendChild(child);
       const spy = sandbox.spy();
       dom.waitForChild(parent, contains, spy);
-      expect(spy.callCount).to.equal(1);
+      expect(spy).to.be.calledOnce;
     });
 
     it('should wait until child is available', () => {
       const spy = sandbox.spy();
       dom.waitForChild(parent, contains, spy);
-      expect(spy.callCount).to.equal(0);
+      expect(spy).to.have.not.been.called;
 
       return new Promise(resolve => {
         const interval = setInterval(() => {
@@ -480,7 +500,7 @@ describe('DOM', () => {
         }, 10);
         parent.appendChild(child);
       }).then(() => {
-        expect(spy.callCount).to.equal(1);
+        expect(spy).to.be.calledOnce;
       });
     });
 
@@ -505,8 +525,8 @@ describe('DOM', () => {
       const spy = sandbox.spy();
 
       dom.waitForChild(parent, checkFunc, spy);
-      expect(spy.callCount).to.equal(0);
-      expect(mutationObserver.observe.callCount).to.equal(1);
+      expect(spy).to.have.not.been.called;
+      expect(mutationObserver.observe).to.be.calledOnce;
       expect(mutationObserver.observe.firstCall.args[0]).to.equal(parent);
       expect(mutationObserver.observe.firstCall.args[1])
           .to.deep.equal({childList: true});
@@ -514,14 +534,14 @@ describe('DOM', () => {
 
       // False callback.
       mutationCallback();
-      expect(spy.callCount).to.equal(0);
-      expect(mutationObserver.disconnect.callCount).to.equal(0);
+      expect(spy).to.have.not.been.called;
+      expect(mutationObserver.disconnect).to.have.not.been.called;
 
       // True callback.
       checkFuncValue = true;
       mutationCallback();
-      expect(spy.callCount).to.equal(1);
-      expect(mutationObserver.disconnect.callCount).to.equal(1);
+      expect(spy).to.be.calledOnce;
+      expect(mutationObserver.disconnect).to.be.calledOnce;
     });
 
     it('should fallback to polling without MutationObserver', () => {
@@ -543,19 +563,19 @@ describe('DOM', () => {
       const spy = sandbox.spy();
 
       dom.waitForChild(parent, checkFunc, spy);
-      expect(spy.callCount).to.equal(0);
+      expect(spy).to.have.not.been.called;
       expect(intervalCallback).to.exist;
 
       // False callback.
       intervalCallback();
-      expect(spy.callCount).to.equal(0);
-      expect(win.clearInterval.callCount).to.equal(0);
+      expect(spy).to.have.not.been.called;
+      expect(win.clearInterval).to.have.not.been.called;
 
       // True callback.
       checkFuncValue = true;
       intervalCallback();
-      expect(spy.callCount).to.equal(1);
-      expect(win.clearInterval.callCount).to.equal(1);
+      expect(spy).to.be.calledOnce;
+      expect(win.clearInterval).to.be.calledOnce;
     });
 
     it('should wait for body', () => {

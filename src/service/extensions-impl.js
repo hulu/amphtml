@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-import {adoptServiceForEmbed, fromClass, setParentWindow} from '../service';
+import {
+  adoptServiceForEmbed,
+  registerServiceBuilder,
+  setParentWindow,
+} from '../service';
 import {
   copyElementToChildWindow,
   stubElementIfNotKnown,
@@ -35,9 +39,9 @@ import {installPixel} from '../../builtins/amp-pixel';
 import {installStyles} from '../style-installer';
 import {calculateExtensionScriptUrl} from './extension-location';
 
-
 const TAG = 'extensions';
 const UNKNOWN_EXTENSION = '_UNKNOWN_';
+const LEGACY_ELEMENTS = ['amp-ad', 'amp-embed', 'amp-video'];
 
 /**
  * The structure that contains the declaration of a custom element.
@@ -84,13 +88,11 @@ let ExtensionHolderDef;
 /**
  * Install extensions service.
  * @param {!Window} window
- * @return {!Extensions}
  * @restricted
  */
 export function installExtensionsService(window) {
-  return fromClass(window, 'extensions', Extensions);
+  registerServiceBuilder(window, 'extensions', Extensions);
 }
-
 
 /**
  * Register and process the specified extension. The factory is called
@@ -398,7 +400,9 @@ export class Extensions {
       // This will extend automatic upgrade of custom elements from top
       // window to the child window.
       stubElementIfNotKnown(topWin, extensionId);
-      stubElementInChildWindow(childWin, extensionId);
+      if (LEGACY_ELEMENTS.indexOf(extensionId) == -1) {
+        stubElementInChildWindow(childWin, extensionId);
+      }
 
       // Install CSS.
       const promise = this.loadExtension(extensionId).then(extension => {
@@ -590,9 +594,9 @@ function copyBuiltinElementsToChildWindow(parentWin, childWin) {
  * @param {!Window} win
  */
 export function stubLegacyElements(win) {
-  stubElementIfNotKnown(win, 'amp-ad');
-  stubElementIfNotKnown(win, 'amp-embed');
-  stubElementIfNotKnown(win, 'amp-video');
+  LEGACY_ELEMENTS.forEach(name => {
+    stubElementIfNotKnown(win, name);
+  });
 }
 
 

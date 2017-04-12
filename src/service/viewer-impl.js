@@ -18,7 +18,7 @@ import {Observable} from '../observable';
 import {findIndex} from '../utils/array';
 import {map} from '../utils/object';
 import {documentStateFor} from './document-state';
-import {getServiceForDoc} from '../service';
+import {registerServiceBuilderForDoc} from '../service';
 import {dev} from '../log';
 import {isIframed} from '../dom';
 import {
@@ -27,7 +27,7 @@ import {
   removeFragment,
   isProxyOrigin,
 } from '../url';
-import {timerFor} from '../timer';
+import {timerFor} from '../services';
 import {reportError} from '../error';
 import {VisibilityState} from '../visibility-state';
 
@@ -755,7 +755,7 @@ export class Viewer {
     if (this.messageDeliverer_) {
       throw new Error('message channel can only be initialized once');
     }
-    if (!origin) {
+    if (origin == null) {
       throw new Error('message channel must have an origin');
     }
     dev().fine(TAG_, 'message channel established with origin: ', origin);
@@ -766,7 +766,7 @@ export class Viewer {
     }
     if (this.trustedViewerResolver_) {
       this.trustedViewerResolver_(
-          origin ? this.isTrustedViewerOrigin_(origin) : false);
+        origin ? this.isTrustedViewerOrigin_(origin) : false);
     }
     if (this.viewerOriginResolver_) {
       this.viewerOriginResolver_(origin || '');
@@ -953,9 +953,9 @@ export function setViewerVisibilityState(viewer, state) {
 /**
  * @param {!./ampdoc-impl.AmpDoc} ampdoc
  * @param {!Object<string, string>=} opt_initParams
- * @return {!Viewer}
  */
 export function installViewerServiceForDoc(ampdoc, opt_initParams) {
-  return getServiceForDoc(ampdoc, 'viewer',
-      () => new Viewer(ampdoc, opt_initParams));
+  registerServiceBuilderForDoc(ampdoc, 'viewer', () => {
+    return new Viewer(ampdoc, opt_initParams);
+  });
 }

@@ -23,7 +23,7 @@ import {
   installVideoManagerForDoc,
 } from '../../../src/service/video-manager-impl';
 import {VideoEvents} from '../../../src/video-interface';
-import {videoManagerForDoc} from '../../../src/video-manager';
+import {videoManagerForDoc} from '../../../src/services';
 import {assertHttpsUrl} from '../../../src/url';
 
 const TAG = 'amp-video';
@@ -178,7 +178,7 @@ class AmpVideo extends AMP.BaseElement {
      */
     installEventHandlers_() {
       const video = dev().assertElement(this.video_);
-      this.forwardEvents([VideoEvents.PLAYING, VideoEvents.PAUSE], video);
+      this.forwardEvents([VideoEvents.PLAY, VideoEvents.PAUSE], video);
       listen(video, 'volumechange', () => {
         if (this.muted_ != this.video_.muted) {
           this.muted_ = this.video_.muted;

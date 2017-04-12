@@ -26,15 +26,39 @@ var MessageType = {
 var APP = '__AMPHTML__';
 
 /**
+ * @fileoverview This class is a de-facto implementation of MessagePort
+ * from Channel Messaging API:
+ * https://developer.mozilla.org/en-US/docs/Web/API/Channel_Messaging_API
+ */
+class WindowPortEmulator {
+  constructor(messageHandlers, id, port) {
+    this.messageHandlers_ = messageHandlers;
+    this.id_ = id;
+    this.port_ = port;
+  }
+  addEventListener(messageType, messageHandler) {
+    console.log('messageHandler', messageHandler);
+    this.messageHandlers_[this.id_] = messageHandler;
+  }
+  postMessage(data) {
+    console.log('############## viewer posting Message', data);
+    this.port_./*OK*/postMessage(data);
+  }
+  start() {}
+}
+
+/**
  * This is a very simple messaging protocol between viewer and viewer client.
  * @param {!Window} target
  * @param {string} targetOrigin
  * @param {function(string, *, boolean):(!Promise<*>|undefined)}
  *    requestProcessor
  * @param {string=} opt_targetId
+ * @param {WindowPortEmulator} opt_port
+ * @param {boolean} opt_isWebview
  * @constructor
  */
-function ViewerMessaging(target, targetOrigin, requestProcessor, opt_targetId) {
+function ViewerMessaging(target, targetOrigin, requestProcessor, opt_targetId, opt_port, opt_isWebview) {
   this.requestIdCounter_ = 0;
   this.waitingForResponse_ = {};
 
@@ -46,12 +70,21 @@ function ViewerMessaging(target, targetOrigin, requestProcessor, opt_targetId) {
   this.targetOrigin_ = targetOrigin;
   /** @private {function(string, *, boolean):(!Promise<*>|undefined)} */
   this.requestProcessor_ = requestProcessor;
+  /** @private {WindowPortEmulator} */
+  this.port_ = opt_port;
+  /** @private {boolean} */
+  this.isWebview_ = !!opt_isWebview;
 
-  if (!this.targetOrigin_) {
+  if (this.targetOrigin_ == null) {
     throw new Error('Target origin must be specified');
   }
 
-  window.addEventListener('message', this.onMessage_.bind(this), false);
+  if (this.port_) {
+    this.port_.addEventListener('message', this.onMessage_.bind(this));
+    this.port_.start();
+  } else {
+    window.addEventListener('message', this.onMessage_.bind(this), false);
+  }
 }
 
 
@@ -96,10 +129,10 @@ ViewerMessaging.prototype.sendRequest = function(eventType, payload,
  * @private
  */
 ViewerMessaging.prototype.onMessage_ = function(event) {
-  if (event.source != this.target_ || event.origin != this.targetOrigin_) {
+  var message = this.isWebview_ ? JSON.parse(event.data) : event.data;
+  if (!message || message.app != APP) {
     return;
   }
-  var message = event.data;
   if (message.type == MessageType.REQUEST) {
     this.onRequest_(message);
   }
@@ -154,7 +187,14 @@ ViewerMessaging.prototype.onResponse_ = function(message) {
  * @private
  */
 ViewerMessaging.prototype.sendMessage_ = function(message) {
-  this.target_./*OK*/postMessage(message, this.targetOrigin_);
+  if (this.isWebview_) {
+    message = JSON.stringify(message);
+  }
+  if (this.targetOrigin_) {
+    this.target_./*OK*/postMessage(message, this.targetOrigin_);
+  } else {
+    this.port_./*OK*/postMessage(message);
+  }
 };
 
 

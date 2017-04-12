@@ -16,7 +16,7 @@
 
 import {createIframePromise} from '../../../../testing/iframe';
 import {listenOncePromise} from '../../../../src/event-helper';
-import {timerFor} from '../../../../src/timer';
+import {timerFor} from '../../../../src/services';
 import {VideoEvents} from '../../../../src/video-interface';
 import '../amp-video';
 import * as sinon from 'sinon';
@@ -297,7 +297,7 @@ describe(TAG, () => {
     }).then(v => {
       const impl = v.implementation_;
       expect(impl.toggleFallback.called).to.be.true;
-      expect(impl.toggleFallback.calledWith(true)).to.be.true;
+      expect(impl.toggleFallback).to.have.been.calledWith(true);
     });
   });
 
@@ -361,7 +361,7 @@ describe(TAG, () => {
 
   it('should forward certain events from video to the amp element', () => {
     return getVideo({
-      src: '/examples/av/ForBiggerJoyrides.mp4',
+      src: 'foo.mp4',
       width: 160,
       height: 90,
     }).then(v => {
@@ -373,7 +373,7 @@ describe(TAG, () => {
       })
       .then(() => {
         impl.play();
-        return listenOncePromise(v, VideoEvents.PLAYING);
+        return listenOncePromise(v, VideoEvents.PLAY);
       })
       .then(() => {
         impl.pause();

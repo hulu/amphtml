@@ -27,7 +27,7 @@ import {listen} from '../../../src/event-helper';
 import {setStyles} from '../../../src/style';
 import {tryParseJson} from '../../../src/json';
 import {user} from '../../../src/log';
-import {viewerForDoc} from '../../../src/viewer';
+import {viewerForDoc} from '../../../src/services';
 
 const TAG = 'amp-animation';
 
@@ -237,7 +237,7 @@ export class AmpAnimation extends AMP.BaseElement {
     }
 
     const vsync = this.getVsync();
-    const readyPromise = this.embed_ ? this.embed_.whenLoaded() :
+    const readyPromise = this.embed_ ? this.embed_.whenReady() :
         this.getAmpDoc().whenReady();
     return readyPromise.then(() => {
       const measurer = new MeasureScanner(this.win, {

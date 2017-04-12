@@ -15,7 +15,7 @@
  */
 
 import {listenOncePromise} from '../../src/event-helper';
-import {timerFor} from '../../src/timer';
+import {timerFor} from '../../src/services';
 import {VideoInterface, VideoEvents} from '../../src/video-interface';
 import {supportsAutoplay} from '../../src/service/video-manager-impl';
 import {
@@ -69,7 +69,7 @@ export function runVideoPlayerIntegrationTests(createVideoElementFunc) {
         })
         .then(() => {
           playButton.click();
-          return listenOncePromise(r.video, VideoEvents.PLAYING);
+          return listenOncePromise(r.video, VideoEvents.PLAY);
         })
         .then(() => {
           pauseButton.click();
@@ -114,14 +114,14 @@ export function runVideoPlayerIntegrationTests(createVideoElementFunc) {
     describe('play/pause', () => {
       it('should play when in view port initially', () => {
         return getVideoPlayer({outsideView: false, autoplay: true}).then(r => {
-          return listenOncePromise(r.video, VideoEvents.PLAYING);
+          return listenOncePromise(r.video, VideoEvents.PLAY);
         });
       });
 
       it('should not play when not in view port initially', () => {
         return getVideoPlayer({outsideView: true, autoplay: true}).then(r => {
           const timer = timerFor(r.video.implementation_.win);
-          const p = listenOncePromise(r.video, VideoEvents.PLAYING).then(() => {
+          const p = listenOncePromise(r.video, VideoEvents.PLAY).then(() => {
             return Promise.reject('should not have autoplayed');
           });
           // we have to wait to ensure play is NOT called.
@@ -137,7 +137,7 @@ export function runVideoPlayerIntegrationTests(createVideoElementFunc) {
           viewport = video.implementation_.getViewport();
 
           // scroll to the bottom, make video fully visible
-          const p = listenOncePromise(video, VideoEvents.PLAYING);
+          const p = listenOncePromise(video, VideoEvents.PLAY);
           viewport.scrollIntoView(video);
           return p;
         }).then(() => {
@@ -150,17 +150,18 @@ export function runVideoPlayerIntegrationTests(createVideoElementFunc) {
     });
 
     describe('Animated Icon', () => {
-      it('should create an animated icon overlay', () => {
+      // TODO(amphtml): Unskip when #8385 is fixed.
+      it.skip('should create an animated icon overlay', () => {
         let video;
         let viewport;
         let icon;
         return getVideoPlayer({outsideView: true, autoplay: true}).then(r => {
           video = r.video;
           return poll('animation icon', () => {
-            return !!video.querySelector('i-amp-video-eq');
+            return !!video.querySelector('i-amphtml-video-eq');
           });
         }).then(() => {
-          icon = video.querySelector('i-amp-video-eq');
+          icon = video.querySelector('i-amphtml-video-eq');
           expect(icon).to.exist;
           // animation should be paused since video is not played yet
           expect(isAnimationPaused(icon)).to.be.true;

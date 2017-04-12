@@ -23,7 +23,10 @@
  */
 
 import {getCookie, setCookie} from '../../../src/cookies';
-import {fromClassForDoc} from '../../../src/service';
+import {
+  registerServiceBuilderForDoc,
+  getServiceForDoc,
+} from '../../../src/service';
 import {
   getSourceOrigin,
   isProxyOrigin,
@@ -31,13 +34,11 @@ import {
 } from '../../../src/url';
 import {isIframed} from '../../../src/dom';
 import {getCryptoRandomBytesArray} from '../../../src/utils/bytes';
-import {viewerForDoc} from '../../../src/viewer';
+import {viewerForDoc} from '../../../src/services';
 import {cryptoFor} from '../../../src/crypto';
 import {tryParseJson} from '../../../src/json';
-import {timerFor} from '../../../src/timer';
-import {user, dev} from '../../../src/log';
-
-const TAG_ = 'Cid';
+import {timerFor} from '../../../src/services';
+import {user, rethrowAsync} from '../../../src/log';
 
 const ONE_DAY_MILLIS = 24 * 3600 * 1000;
 
@@ -143,12 +144,9 @@ function getExternalCid(cid, getCidStruct, persistenceConsent) {
   if (!isProxyOrigin(url)) {
     return getOrCreateCookie(cid, getCidStruct, persistenceConsent);
   }
-  const cryptoPromise = cryptoFor(cid.ampdoc.win);
-  return Promise.all([getBaseCid(cid, persistenceConsent), cryptoPromise])
-      .then(results => {
-        const baseCid = results[0];
-        const crypto = results[1];
-        return crypto.sha384Base64(
+  return getBaseCid(cid, persistenceConsent)
+      .then(baseCid => {
+        return cryptoFor(cid.ampdoc.win).sha384Base64(
             baseCid + getProxySourceOrigin(url) + getCidStruct.scope);
       });
 }
@@ -197,8 +195,7 @@ function getOrCreateCookie(cid, getCidStruct, persistenceConsent) {
         Promise.resolve(existingCookie));
   }
 
-  const newCookiePromise = cryptoFor(win)
-      .then(crypto => crypto.sha384Base64(getEntropy(win)))
+  const newCookiePromise = cryptoFor(win).sha384Base64(getEntropy(win))
       // Create new cookie, always prefixed with "amp-", so that we can see from
       // the value whether we created it.
       .then(randomStr => 'amp-' + randomStr);
@@ -259,8 +256,7 @@ function getBaseCid(cid, persistenceConsent) {
       }
     } else {
       // We need to make a new one.
-      baseCid = cryptoFor(win)
-          .then(crypto => crypto.sha384Base64(getEntropy(win)));
+      baseCid = cryptoFor(win).sha384Base64(getEntropy(win));
       needsToStore = true;
     }
 
@@ -331,7 +327,7 @@ export function viewerBaseCid(ampdoc, opt_data) {
     // it should resolve in milli seconds.
     return timerFor(ampdoc.win).timeoutPromise(10000, cidPromise, 'base cid')
         .catch(error => {
-          dev().error(TAG_, error);
+          rethrowAsync(error);
           return undefined;
         });
   });
@@ -432,6 +428,7 @@ function getEntropy(win) {
  * @return {!Cid}
  * @private visible for testing
  */
-export function installCidServiceForDocForTesting(ampdoc) {
-  return fromClassForDoc(ampdoc, 'cid', Cid);
+export function cidServiceForDocForTesting(ampdoc) {
+  registerServiceBuilderForDoc(ampdoc, 'cid', Cid);
+  return getServiceForDoc(ampdoc, 'cid');
 }

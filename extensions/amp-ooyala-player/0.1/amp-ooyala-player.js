@@ -23,7 +23,7 @@ import {
 } from '../../../src/service/video-manager-impl';
 import {isObject} from '../../../src/types';
 import {VideoEvents} from '../../../src/video-interface';
-import {videoManagerForDoc} from '../../../src/video-manager';
+import {videoManagerForDoc} from '../../../src/services';
 
 /**
  * @implements {../../../src/video-interface.VideoInterface}
@@ -61,6 +61,7 @@ class AmpOoyalaPlayer extends AMP.BaseElement {
     const iframe = this.element.ownerDocument.createElement('iframe');
     this.iframe_ = iframe;
 
+    this.forwardEvents([VideoEvents.PLAY, VideoEvents.PAUSE], iframe);
     this.applyFillContent(iframe, true);
     this.element.appendChild(iframe);
 
@@ -147,7 +148,7 @@ class AmpOoyalaPlayer extends AMP.BaseElement {
       return; // We only process valid JSON.
     }
     if (data.data == 'playing') {
-      this.element.dispatchCustomEvent(VideoEvents.PLAYING);
+      this.element.dispatchCustomEvent(VideoEvents.PLAY);
     } else if (data.data == 'paused') {
       this.element.dispatchCustomEvent(VideoEvents.PAUSE);
     } else if (data.data == 'muted') {

@@ -17,7 +17,7 @@
 import {ampdocServiceFor} from '../../src/ampdoc';
 import {isLayoutSizeDefined} from '../../src/layout';
 import {VideoEvents} from '../../src/video-interface';
-import {videoManagerForDoc} from '../../src/video-manager';
+import {videoManagerForDoc} from '../../src/services';
 import {
   installVideoManagerForDoc,
   supportsAutoplay,
@@ -87,11 +87,11 @@ describe('Supports Autoplay', () => {
       expect(video.style.height).to.equal('0');
       expect(video.style.opacity).to.equal('0');
 
-      expect(setAttributeSpy.calledWith('muted', '')).to.be.true;
-      expect(setAttributeSpy.calledWith('playsinline', '')).to.be.true;
-      expect(setAttributeSpy.calledWith('webkit-playsinline', '')).to.be.true;
-      expect(setAttributeSpy.calledWith('height', '0')).to.be.true;
-      expect(setAttributeSpy.calledWith('width', '0')).to.be.true;
+      expect(setAttributeSpy).to.have.been.calledWith('muted', '');
+      expect(setAttributeSpy).to.have.been.calledWith('playsinline', '');
+      expect(setAttributeSpy).to.have.been.calledWith('webkit-playsinline', '');
+      expect(setAttributeSpy).to.have.been.calledWith('height', '0');
+      expect(setAttributeSpy).to.have.been.calledWith('width', '0');
 
       expect(video.muted).to.be.true;
       expect(video.playsinline).to.be.true;
@@ -261,7 +261,7 @@ function createFakeVideoPlayerClass(win) {
      */
     play(unusedIsAutoplay) {
       Promise.resolve().then(() => {
-        this.element.dispatchCustomEvent(VideoEvents.PLAYING);
+        this.element.dispatchCustomEvent(VideoEvents.PLAY);
       });
     }
 

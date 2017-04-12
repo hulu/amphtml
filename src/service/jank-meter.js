@@ -15,7 +15,11 @@
  */
 
 import {isExperimentOn} from '../experiments';
+import {performanceForOrNull} from '../services';
 import {dev} from '../log';
+
+/** @const {number} */
+const NTH_FRAME = 200;
 
 export class JankMeter {
 
@@ -25,37 +29,61 @@ export class JankMeter {
   constructor(win) {
     /** @private {!Window} */
     this.win_ = win;
-    /** @private {!Element} */
-    this.jankMeterDisplay_ = this.win_.document.createElement('div');
-    this.jankMeterDisplay_.classList.add('i-amphtml-jank-meter');
     /** @private {number} */
-    this.jankCounter_ = 0;
+    this.jankCnt_ = 0;
     /** @private {number} */
-    this.bigJankCounter_ = 0;
-    this.win_.document.body.appendChild(this.jankMeterDisplay_);
-    this.updateMeterDisplay_(0);
-    /** @private {number} */
-    this.scheduledTime_ = -1;
+    this.totalCnt_ = 0;
+    /** @private {?number} */
+    this.scheduledTime_ = null;
+    /** @private {?./performance-impl.Performance} */
+    this.perf_ = performanceForOrNull(win);
+
+    if (isJankMeterEnabled(win)) {
+      /** @private {!Element} */
+      this.jankMeterDisplay_ = this.win_.document.createElement('div');
+      this.jankMeterDisplay_.classList.add('i-amphtml-jank-meter');
+      this.win_.document.body.appendChild(this.jankMeterDisplay_);
+      this.updateMeterDisplay_(0);
+    }
   }
 
   onScheduled() {
+    if (!this.isEnabled_()) {
+      return;
+    }
     // only take the first schedule for the current frame.
-    if (this.scheduledTime_ == -1) {
-      this.scheduledTime_ = Date.now();
+    if (this.scheduledTime_ == null) {
+      this.scheduledTime_ = this.win_.Date.now();
     }
   }
 
   onRun() {
-    const paintLatency = Date.now() - this.scheduledTime_;
-    this.scheduledTime_ = -1;
+    if (!this.isEnabled_() || this.scheduledTime_ == null) {
+      return;
+    }
+    const paintLatency = this.win_.Date.now() - this.scheduledTime_;
+    this.scheduledTime_ = null;
+    this.totalCnt_++;
     if (paintLatency > 16) {
-      this.jankCounter_++;
-      if (paintLatency > 100) {
-        this.bigJankCounter_++;
-      }
-      this.updateMeterDisplay_(paintLatency);
+      this.jankCnt_++;
       dev().info('JANK', 'Paint latency: ' + paintLatency + 'ms');
     }
+
+    // Report Good Frame Probability on Nth frame.
+    if (this.perf_ && this.totalCnt_ == NTH_FRAME) {
+      this.perf_.tickDelta('gfp', this.calculateGfp_());
+      this.perf_.flush();
+    }
+    if (isJankMeterEnabled(this.win_)) {
+      this.updateMeterDisplay_(paintLatency);
+    }
+  }
+
+  isEnabled_() {
+    return isJankMeterEnabled(this.win_)
+        || (this.perf_
+            && this.perf_.isPerformanceTrackingOn()
+            && this.totalCnt_ < NTH_FRAME);
   }
 
   /**
@@ -63,11 +91,22 @@ export class JankMeter {
    * @private
    */
   updateMeterDisplay_(paintLatency) {
+    const gfp = this.calculateGfp_();
     this.jankMeterDisplay_.textContent =
-        `${this.jankCounter_}|${this.bigJankCounter_}|${paintLatency}ms`;
+        `${gfp}%|${this.totalCnt_}|${paintLatency}ms`;
+  }
+
+  /**
+   * Calculate Good Frame Probability, which is a value range from 0 to 100.
+   * @returns {number}
+   * @private
+   */
+  calculateGfp_() {
+    return this.win_.Math.floor(
+        (this.totalCnt_ - this.jankCnt_) / this.totalCnt_ * 100);
   }
 }
 
-export function isJankMeterEnabled(win) {
+function isJankMeterEnabled(win) {
   return isExperimentOn(win, 'jank-meter');
 }
